@@ -8,4 +8,4 @@ build = "build.rs"
 rustlex = { path = "../RustLex" }
 
 [build-dependencies]
-menhir = { path = "../menhir" }
+menhir = { path = "../menhir-rs" }
