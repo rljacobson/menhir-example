@@ -17,7 +17,7 @@ fn main() {
     );
 
     println!("cargo:rerun-if-changed=src/parser.rsy");
-    println!("cargo:rerun-if-changed=src/parsererror.messages");
+    println!("cargo:rerun-if-changed=src/parseerrors.messages");
     // ToDo: What does this line do?
     menhir::cargo_rustc_flags().unwrap();
 }

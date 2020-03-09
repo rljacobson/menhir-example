@@ -1,34 +1,31 @@
-extern crate menhir_runtime;
-extern crate logos;
-
 mod mllexer;
-
-use menhir_runtime::ParserError::{SyntaxError, LexerError};
-use menhir_runtime::{EntryPoint};
-use mllexer::{MLLexer, LogosTokenType};
-
-use logos::Logos;
+use mllexer::{MLLexer, LogosTokenType, Logos, LexerError, SyntaxError};
 
 
 use std::io::BufReader;
 use std::fmt::{Debug, Formatter, Error, Display};
 use std::fmt;
 
+/// Convenience type to make AST types boxed.
 pub type Expr = Box<ExprNode>;
 
 #[derive(Debug)]
+/// AST types
 pub enum ExprNode {
   Var(String),
   App(Expr, Expr),
   Abs(String, Expr)
 }
 
+/// Menhir parser definitions.
 mod parser {
   include!(concat!(env!("OUT_DIR"), "/parser.rs"));
   include!(concat!(env!("OUT_DIR"), "/parseerrors.rs"));
 }
 
-// Need a macro to create LogosToken to parser::Token at the same time it creates the lexer tokens.
+use parser::EntryPoint; // Required for parser::main::run()
+
+/// Logos lexer definitions.
 #[derive(Logos, Debug, PartialEq, Clone, Copy)]
 enum LogosToken {
   #[end]
@@ -47,13 +44,15 @@ enum LogosToken {
   ID,
 }
 
+// ToDo: Need a macro to create LogosToken to parser::Token at the same
+// time it creates the lexer tokens.
 impl LogosTokenType<parser::Token> for LogosToken{
   /// Convert from Logos::token to parser::YYType. This function does
   /// not call `lexer.advance()`.
   fn map_to_parser_token(lex: &logos::Lexer<LogosToken, &str>)
                    -> parser::Token{
     let tok = lex.token;
-    let emitted = match tok {
+    match tok {
       LogosToken::Lambda => parser::Token::LAMBDA,
       LogosToken::Open => parser::Token::OPEN,
       LogosToken::Close => parser::Token::CLOSE,
@@ -62,40 +61,13 @@ impl LogosTokenType<parser::Token> for LogosToken{
         parser::Token::ID(lex.slice().to_owned())
       },
       _ => parser::Token::EOF
-    };
-    emitted
+    }
   }
 }
-
-// Don't need this. Use crate derive-more on LogosToken.
-impl Display for parser::Token{
-  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-    let msg = match self {
-      parser::Token::OPEN => "Token::OPEN",
-      parser::Token::LAMBDA => "Token::LAMBDA",
-      parser::Token::ID(data) => "Token::ID",
-      parser::Token::EOF => "Token::EOF",
-      parser::Token::DOT => "Token::DOT",
-      parser::Token::CLOSE => "Token::CLOSE",
-      _ => "UNKNOWN TOKEN"
-    };
-    write!(f, "{}", msg)
-  }
-}
-
-impl Debug for parser::Token{
-  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-    write!(f, "{}", self)
-  }
-}
-
 
 fn main() {
   let text = "(lambda x.x) (lambda x.x)";
   let input = MLLexer::<LogosToken, parser::Token>::new(text);
-
-  // let mut lexer = input.chain(::std::iter::once(EOF)).enumerate();
-  // let adapter = IteratorLexer::new(&mut lexer);
 
   match parser::main::run(input) {
     Ok(term) => println!("Succesfully parsed: {:?}", term),
@@ -104,7 +76,7 @@ fn main() {
         Some(t) => t,
         _ => "No message for this error."
       };
-      println!("Syntax error at {}:{}:: {}", loc.start+1, loc.end, msg)
+      println!("Syntax error at {}:{}:: {}", loc.start + 1, loc.end, msg)
     }
     Err(LexerError(err)) => println!("Lexer error: {}", err),
   }

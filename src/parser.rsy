@@ -1,4 +1,4 @@
-%{ use super::{Expr, ExprNode}; %}
+%{ use super::{Expr, ExprNode};  %}
 
 %token <String> ID
 %token LAMBDA

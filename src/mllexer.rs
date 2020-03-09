@@ -1,122 +1,54 @@
 extern crate menhir_runtime;
 extern crate logos;
 
-use menhir_runtime::{IteratorLexer, Lexer as MenhirLexer, LRParser as MenhirParser};
-use menhir_runtime::ParserError::{LexerError as MenhirLexerError};
-use logos::{Logos, Lexer as LogosLexer};
+use self::menhir_runtime::{IteratorLexer, Lexer as MenhirLexer, LRParser as MenhirParser};
+pub use self::menhir_runtime::ParserError::{SyntaxError, LexerError};
+pub use self::menhir_runtime::{EntryPoint};
+
+use self::logos::{Lexer as LogosLexer};
+pub use self::logos::Logos;
 
 use std::ops::Range;
 use std::{fmt, error};
 use std::marker::PhantomData;
+use std::fmt::{Debug, Formatter, Error};
 
-// ToDo: Make `use logos` not required in client code (reexport, etc.).
-// ToDo: Refine error types.
 
 //region Error types
-
-/// Error type for this module.
-#[derive(Debug)]
-pub struct MLLexerError<'a> {
-  range: Range<usize>,
-  kind: &'a MLLexerErrorKind<'a>,
+pub struct MLLexerError{
+  range: Range<usize>
 }
 
-/// Kinds of errors for this error type,
-pub enum MLLexerErrorKind<'a> {
-  UnknownError, // A catch-all that shouldn't happen.
-  IllegalCharacter(char),
-  IllegalEscape(&'a str, Option<&'a str>),
-  ReservedSequence(&'a str, Option<&'a str>),
-  UnterminatedComment,
-  UnterminatedString,
-  //    UnterminatedStringInComment(Location, Location),
-  KeywordAsLabel(&'a str),
-  InvalidLiteral(&'a str),
-  InvalidDirective(&'a str, Option<&'a str>),
-  CommentStartWithEnd,
-  CommentEndWithoutStart,
-  // EscapeError(&'a ::unescape::EscapeError),
-}
-
-impl<'a> fmt::Debug for MLLexerErrorKind<'a> {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "{}", self)
-  }
-}
-
-impl<'a> fmt::Display for MLLexerErrorKind<'a>{
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    let msg = match self {
-      MLLexerErrorKind::UnknownError => "An unexpected error occurred. This should not \
-            happen.".to_owned(),
-      MLLexerErrorKind::IllegalCharacter(char) => format!("Illegal character: `{}`.", char),
-      MLLexerErrorKind::IllegalEscape(text, opt) => {
-        let extra = match opt {
-          Some(reason) => reason,
-          None => ""
-        };
-        format!("Illegal escape: `{}`. {}", text, extra)
-      },
-      MLLexerErrorKind::ReservedSequence(text, opt) => {
-        let extra = match opt {
-          Some(reason) => reason,
-          None => ""
-        };
-        format!("This sequence is reserved: `{}`. {}", text, extra)
-      },
-      MLLexerErrorKind::UnterminatedComment => "Unterminated comment, missing `*)`.".to_owned(),
-      MLLexerErrorKind::UnterminatedString => "Unterminated string, missing `\"`.".to_owned(),
-      // LexicalErrorKind::UnterminatedStringInComment(Location, Location),
-      MLLexerErrorKind::KeywordAsLabel(text) =>
-        format!("The keyword {} cannot be used as a label.", text),
-      MLLexerErrorKind::InvalidLiteral(literal) =>
-        format!("Invalid literal: `{}`.", literal),
-      MLLexerErrorKind::InvalidDirective(text, opt) => {
-        let extra = match opt {
-          Some(reason) => reason,
-          None => ""
-        };
-        format!("Invalid directive: `{}`. {}", text, extra)
-      },
-      MLLexerErrorKind::CommentStartWithEnd =>
-        format!("Comment beginning and end are combined: `(*)`."),
-      MLLexerErrorKind::CommentEndWithoutStart =>
-        format!("Comment ended, but no comment was begun. (Missing `(*`.)"),
-      // MLLexerErrorKind::EscapeError(EscapeError) =>
-      //   format!("{}", EscapeError)
-    };
-    write!(f, "{}", msg)
-  }
-}
-
-impl<'a> MLLexerError<'a>{
-  pub fn new(range: Range<usize>, kind: &'a MLLexerErrorKind<'a>) -> MLLexerError<'a>{
+impl MLLexerError {
+  pub fn new(range: Range<usize>) -> MLLexerError{
     MLLexerError{
-      range,
-      kind
+      range
     }
   }
   pub fn at(&self) -> Range<usize>{
     return self.range.clone()
   }
-  pub fn kind(&self) -> &MLLexerErrorKind {
-    return self.kind
-  }
 }
 
-impl<'a> fmt::Display for MLLexerError<'a>{
+impl fmt::Display for MLLexerError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     let range = self.at();
-    write!(f, "{}:{}: error : {}", self.range.start, self.range.end-1, self.kind)
+    write!(f, "Lexer Error at {}:{}. Probably an IO error.", self.range.start, self.range.end-1)
   }
 }
 
-impl<'a> error::Error for MLLexerError<'a> {
+impl Debug for MLLexerError {
+  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    write!(f,
+           "MLLexerError{{start={},end={}}}",
+           self.range.start,
+           self.range.end-1
+    )
+  }
+}
+
+impl error::Error for MLLexerError {
   fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-    // match *self.kind(){
-    //   MLLexerErrorKind::EscapeError(ref e) => Some(e),
-    //   _ => None
-    // }
     None
   }
 }
@@ -160,17 +92,16 @@ impl<'a, LTokenType, PTokenType> MenhirLexer for MLLexer<'a, LTokenType, PTokenT
   // Location is not a (row,col)-coordinate but rather a [start,stop) range given as byte indices.
   type Location = Range<usize>;   // The location type of parser::Token.
   type Token = PTokenType; // The parser::Token type from the generated parser
-  type Error = MLLexerError<'a>;
+  type Error = MLLexerError;
 
   fn input(&mut self) -> Result<(Range<usize>, PTokenType), Self::Error>{
 
     if self.lexer.token == LTokenType::ERROR {
       // ToDo: Do we advance on a lexer error?
-      // ToDo: Figure out how to extract error states from Logos
+      // ToDo: Figure out how to extract error states from Logos and make more detailed errors.
       return Err(
         MLLexerError::new(
-          self.lexer.range(),
-          &MLLexerErrorKind::UnknownError
+          self.lexer.range()
         )
       )
     }

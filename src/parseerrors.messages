@@ -106,5 +106,5 @@ main: OPEN ID EOF
 ## In state 8, spurious reduction of production expr_node -> expr2_node 
 ##
 
-Expected a closing delimiter or an expression.
+Expected a closing delimiter or expression.
 
