@@ -1,0 +1,17 @@
+[package]
+name = "menhir_logos"
+description = "A shim to use a logos lexer with a menhir-rs parser."
+version = "0.1.0"
+authors = ["Robert Jacobson <rljacobson@gmail.com>"]
+
+[lib]
+name = "menhir_logos"
+
+[dependencies]
+# Logos is about to go to 1.0, with which this lib is likely compatible.
+logos = "0.9"
+# This crate is not on Crates.io.
+menhir_runtime = { path = "../../menhir_runtime" }
+
+[build-dependencies]
+# None

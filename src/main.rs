@@ -1,5 +1,6 @@
-mod mllexer;
-use mllexer::{MLLexer, LogosTokenType, Logos, LexerError, SyntaxError};
+extern crate menhir_logos;
+extern crate logos;
+use menhir_logos::{MLLexer, LogosTokenType, Logos, LogosLexer, LexerError, SyntaxError};
 
 
 use std::io::BufReader;
@@ -44,12 +45,12 @@ enum LogosToken {
   ID,
 }
 
-// ToDo: Need a macro to create LogosToken to parser::Token at the same
+// ToDo: Need a macro to create the `map_to_parser_token` function at the same
 // time it creates the lexer tokens.
 impl LogosTokenType<parser::Token> for LogosToken{
   /// Convert from Logos::token to parser::YYType. This function does
   /// not call `lexer.advance()`.
-  fn map_to_parser_token(lex: &logos::Lexer<LogosToken, &str>)
+  fn map_to_parser_token(lex: &LogosLexer<LogosToken, &str>)
                    -> parser::Token{
     let tok = lex.token;
     match tok {

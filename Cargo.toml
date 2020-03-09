@@ -1,12 +1,17 @@
 [package]
 name = "menhir-example"
+description = "A complete example of how to use menhir_logos."
 version = "0.1.0"
-authors = ["Naomi Testard <naomi.testard@gmail.com>"]
+authors = ["Robert Jacobson <rljacobson@gmail.com>", "Naomi Testard <naomi.testard@gmail.com>"]
 build = "build.rs"
 
 [dependencies]
-logos = "0.9.7"
+# Logos is about to go to 1.0, with which this lib is likely compatible.
+logos = "0.9"
+# This crate is not on Crates.io. It needs to be.
 menhir_runtime = { path = "../menhir_runtime" }
+menhir_logos = { path = "./menhirlogos" }
 
 [build-dependencies]
+# Need to update the version on Crates.io.
 menhir = { path = "../menhir-rs" }

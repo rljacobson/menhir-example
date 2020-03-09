@@ -5,8 +5,8 @@ use self::menhir_runtime::{IteratorLexer, Lexer as MenhirLexer, LRParser as Menh
 pub use self::menhir_runtime::ParserError::{SyntaxError, LexerError};
 pub use self::menhir_runtime::{EntryPoint};
 
-use self::logos::{Lexer as LogosLexer};
-pub use self::logos::Logos;
+pub use self::logos::{Logos, Lexer as LogosLexer};
+
 
 use std::ops::Range;
 use std::{fmt, error};
