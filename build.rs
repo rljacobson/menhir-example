@@ -3,13 +3,13 @@ use menhir::MenhirOption;
 use std::path::Path;
 
 fn main() {
-    let msg_path = Path::new("src/parseerror.messages");
+    let msg_path = Path::new("src/parseerrors.messages");
     let grammar_path = Path::new("src/parser.rsy");
 
     menhir::compile_errors(
         msg_path,
         grammar_path,
-        &[MenhirOption::CompileErrors(msg_path.copy)]
+        &[MenhirOption::CompileErrors(msg_path)]
     );
     menhir::process_file(
         grammar_path,

@@ -5,7 +5,8 @@ authors = ["Naomi Testard <naomi.testard@gmail.com>"]
 build = "build.rs"
 
 [dependencies]
-rustlex = { path = "../RustLex" }
+logos = "0.9.7"
+menhir_runtime = { path = "../menhir_runtime" }
 
 [build-dependencies]
 menhir = { path = "../menhir-rs" }
